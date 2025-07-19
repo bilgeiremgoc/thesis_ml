@@ -171,7 +171,7 @@ class EndometriosisBiomarkerAnalysis:
         # NA değerleri temizleme
         standardized_data = standardized_data.dropna(subset=['Gene', 'logFC'])
         
-        # Gen isimlerini temizleme (sayısal olmayan gen isimlerini filtrele)
+        # Gen isimlerini temizleme
         standardized_data = standardized_data[
             ~standardized_data['Gene'].str.match(r'^\d+\.?\d*$', na=False)
         ]
@@ -218,15 +218,12 @@ class EndometriosisBiomarkerAnalysis:
             lasso.fit(X, y)
             selected_indices = np.where(lasso.coef_[0] != 0)[0]
             if len(selected_indices) > n_features:
-                # En önemli n_features kadarını seç
                 coef_abs = np.abs(lasso.coef_[0])
                 selected_indices = np.argsort(coef_abs)[-n_features:]
             X_selected = X[:, selected_indices]
             selected_scores = np.abs(lasso.coef_[0][selected_indices])
             
         elif method == 'combined':
-            # Kombine yaklaşım: F-test + RF importance
-            # F-test ile ilk 50% seç
             f_selector = SelectKBest(score_func=f_classif, k=min(n_features*2, X.shape[1]))
             X_f_selected = f_selector.fit_transform(X, y)
             f_indices = f_selector.get_support(indices=True)
@@ -237,7 +234,7 @@ class EndometriosisBiomarkerAnalysis:
             rf_importance = rf.feature_importances_
             final_indices = np.argsort(rf_importance)[-n_features:]
             
-            # Orijinal indekslere çevir
+            # Orijinal indekslere çevirme
             selected_indices = f_indices[final_indices]
             X_selected = X[:, selected_indices]
             selected_scores = rf_importance[final_indices]
@@ -277,7 +274,7 @@ class EndometriosisBiomarkerAnalysis:
                 X_balanced, y_balanced = X, y
             
         elif method == 'simple':
-            # Basit dengeleme: Class weights kullan
+            # Basit dengeleme: Class weights kullanma
             print("Basit dengeleme uygulanıyor (class weights)")
             X_balanced, y_balanced = X, y
             
@@ -330,7 +327,7 @@ class EndometriosisBiomarkerAnalysis:
         """Regularization ile model eğitimi"""
         print("Regularized modeller eğitiliyor...")
         
-        # Veriyi standardize et
+        # Veriyi standardize etme
         scaler = RobustScaler()
         X_scaled = scaler.fit_transform(X)
         
@@ -343,7 +340,7 @@ class EndometriosisBiomarkerAnalysis:
             'max_depth': 5,  # Overfitting önleme
             'min_samples_split': 5,
             'min_samples_leaf': 2,
-            'max_features': 'sqrt',  # Feature sayısını sınırla
+            'max_features': 'sqrt',  # Feature sayısını sınırlama
             'random_state': 42,
             'n_jobs': -1,
             'class_weight': 'balanced'  # Class balancing
@@ -480,11 +477,11 @@ class EndometriosisBiomarkerAnalysis:
         """En önemli genleri seçme"""
         print(f"En önemli {top_n} gen seçiliyor...")
         
-        # Binary labels oluştur
+        # Binary labels oluşturma
         y = (self.group_labels == 'Endometriosis').astype(int)
         X = self.expression_df.values
         
-        # Feature selection uygula
+        # Feature selection uygulama
         X_selected, selected_indices, selection_scores = self.advanced_feature_selection(
             X, y, method=method, n_features=top_n
         )
@@ -567,7 +564,7 @@ class EndometriosisBiomarkerAnalysis:
         # Eğitim eğrileri
         results = xgb_model.evals_result()
         
-        # Plot
+        # Plot çizme
         plt.figure(figsize=(12, 5))
         
         plt.subplot(1, 2, 1)
@@ -788,7 +785,7 @@ class EndometriosisBiomarkerAnalysis:
         """Feature importance karşılaştırması"""
         print("Feature importance karşılaştırması çiziliyor...")
         
-        # Her modelden top 10 geni al
+        # Her modelden top 10 geni alma
         top_genes_per_model = {}
         
         for model_name, model_results in models.items():
@@ -797,12 +794,12 @@ class EndometriosisBiomarkerAnalysis:
             elif 'selected_genes' in model_results:
                 top_genes_per_model[model_name] = model_results['selected_genes'][:10]
         
-        # Tüm unique genleri topla
+        # Tüm unique genleri toplama
         all_top_genes = set()
         for genes in top_genes_per_model.values():
             all_top_genes.update(genes)
         
-        # Heatmap için matrix oluştur
+        # Heatmap için matrix oluşturma
         gene_list = list(all_top_genes)
         model_names = list(top_genes_per_model.keys())
         
@@ -811,7 +808,6 @@ class EndometriosisBiomarkerAnalysis:
         for i, gene in enumerate(gene_list):
             for j, model_name in enumerate(model_names):
                 if gene in top_genes_per_model[model_name]:
-                    # Rank-based importance (1st = 10, 2nd = 9, etc.)
                     rank = top_genes_per_model[model_name].index(gene)
                     importance_matrix[i, j] = 10 - rank
                 else:
@@ -820,7 +816,7 @@ class EndometriosisBiomarkerAnalysis:
         # Heatmap
         plt.figure(figsize=(12, max(8, len(gene_list) * 0.3)))
         
-        # Model isimlerini düzenle
+        # Model isimlerini düzenleme
         model_labels = [name.replace('_', ' ').title() for name in model_names]
         
         sns.heatmap(importance_matrix, 
@@ -943,7 +939,7 @@ class EndometriosisBiomarkerAnalysis:
         results_df = pd.DataFrame(grid_search.cv_results_)
         results_df.to_csv(self.output_dir / 'rf_gridsearch_results.csv', index=False)
         
-        # En iyi 10 parametre kombinasyonunu göster
+        # En iyi 10 parametre kombinasyonunu gösterme
         top_results = results_df.nlargest(10, 'mean_test_score')[['params', 'mean_test_score', 'std_test_score']]
         print("\nEn iyi 10 parametre kombinasyonu:")
         for i, row in top_results.iterrows():
@@ -954,7 +950,7 @@ class EndometriosisBiomarkerAnalysis:
         print("Feature importance çiziliyor...")
         importances = best_rf.feature_importances_
         
-        # En önemli 20 özelliği görselleştir
+        # En önemli 20 özelliği görselleştirme
         top_indices = importances.argsort()[::-1][:20]
         plt.figure(figsize=(12, 8))
         plt.barh(range(20), importances[top_indices][::-1], align='center')
@@ -965,7 +961,7 @@ class EndometriosisBiomarkerAnalysis:
         plt.savefig(self.output_dir / 'rf_feature_importance_gridsearch.png', dpi=200, bbox_inches='tight')
         plt.close()
         
-        # Feature importance'ları CSV'ye kaydet
+        # Feature importance'ları CSV'ye kaydetme
         importance_df = pd.DataFrame({
             'Feature': feature_names,
             'Importance': importances
@@ -981,7 +977,7 @@ class EndometriosisBiomarkerAnalysis:
             'top_features': [feature_names[i] for i in top_indices[:10]]
         }
         
-        # Özeti JSON olarak kaydet
+        # Özeti JSON olarak kaydetme
         import json
         with open(self.output_dir / 'rf_performance_summary_gridsearch.json', 'w') as f:
             json.dump(performance_summary, f, indent=2)
@@ -1255,7 +1251,7 @@ class EndometriosisBiomarkerAnalysis:
         print("Feature importance karşılaştırması çiziliyor...")
         self.plot_feature_importance_comparison(models, selected_genes)
         
-        # Her model için ayrı ayrı accuracy/loss grafiği çiz
+        # Her model için ayrı ayrı accuracy/loss grafiği çizme
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test = train_test_split(
             X_balanced, y_balanced, test_size=0.2, random_state=42, stratify=y_balanced)
@@ -1268,7 +1264,6 @@ class EndometriosisBiomarkerAnalysis:
                 model.fit(X_train, y_train)
             self.plot_model_accuracy_loss(model, model_name, X_train, X_test, y_train, y_test)
 
-        # Incremental curves for all models
         self.plot_incremental_curves_for_all_models(X_balanced, y_balanced, self.output_dir)
 
         # ===========================================================================
@@ -1552,7 +1547,7 @@ class EndometriosisBiomarkerAnalysis:
             results = model.evals_result()
             epochs = len(results['validation_0']['logloss'])
             x_axis = range(epochs)
-            # Accuracy hesapla
+            # Accuracy hesaplama
             train_acc = 1 - np.array(results['validation_0']['logloss'])
             val_acc = 1 - np.array(results['validation_1']['logloss'])
             train_loss = np.array(results['validation_0']['logloss'])
@@ -1633,7 +1628,7 @@ class EndometriosisBiomarkerAnalysis:
                     X_selected, selected_indices, _ = self.advanced_feature_selection(X, y, method=method, n_features=n_genes)
                     selected_genes = [feature_names[i] for i in selected_indices]
 
-                    # SMOTE ile dengeleme (isteğe bağlı)
+                    # SMOTE ile dengeleme
                     X_bal, y_bal = X_selected, y
                     if use_smote:
                         try:
@@ -1644,12 +1639,12 @@ class EndometriosisBiomarkerAnalysis:
                             print(f"SMOTE hatası: {e}. Orijinal veri kullanılıyor.")
                             X_bal, y_bal = X_selected, y
 
-                    # GridSearchCV ve analiz
+                    # GridSearchCV ve analizi gerçekleştirme
                     analyzer = self
                     analyzer.output_dir = combo_dir
                     results = analyzer.advanced_model_analysis_with_gridsearch(X_bal, y_bal, selected_genes)
 
-                    # Sonuçları özetle
+                    # Sonuçları özetleme
                     perf = results['performance_summary']
                     perf_row = {
                         'feature_method': method,
@@ -1663,10 +1658,7 @@ class EndometriosisBiomarkerAnalysis:
                     }
                     summary_rows.append(perf_row)
 
-                    # Incremental curve (opsiyonel, sadece ilk 1-2 kombinasyonda yapılabilir)
-                    # analyzer.plot_incremental_curves_for_all_models(X_bal, y_bal, combo_dir)
-
-        # Tüm sonuçları CSV'ye kaydet
+        # Tüm sonuçları CSV'ye kaydetme
         summary_df = pd.DataFrame(summary_rows)
         summary_df.to_csv(output_dir / 'rf_benchmark_summary.csv', index=False)
         print(f"\nTüm kombinasyonlar tamamlandı. Sonuçlar: {output_dir / 'rf_benchmark_summary.csv'}")
@@ -1716,7 +1708,7 @@ if __name__ == "__main__":
     print("model.compare_all_models(important_genes)")
     print()
     
-    # Kapsamlı analiz (eğer dosyalar mevcutsa)
+    # Kapsamlı analiz
     try:
         if os.path.exists(endo_file) and os.path.exists(auto_file):
             print("Excel dosyaları bulundu. Kapsamlı analiz başlatılıyor...")
